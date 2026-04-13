@@ -155,16 +155,30 @@
             opacity: 0.7;
             cursor: not-allowed;
         }
+
+        #overdue {
+            display: none;
+            position: absolute;
+            top: calc(100% + 20px);
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
 
 <body>
-    <main>
+    <main style="position: relative;">
         <header style="position: absolute; left: -9999px;">
             <h1>Free Online Pomodoro Timer</h1>
             <p>Boost your productivity with our super minimal and distraction-free Pomodoro technique timer. Alternate between 25-minute focused work sessions and 5-minute breaks.</p>
         </header>
-        
+
         <div class="container">
             <div class="tabs">
                 <button class="tab active" data-preset="work">Work</button>
@@ -175,10 +189,18 @@
 
             <button class="start-btn" id="startBtn">START</button>
         </div>
+
+        <div id="overdue">overdue &nbsp;<span id="overdueTime">00:00</span></div>
     </main>
 
     <script>
-        const PRESETS = { work: 25 * 60, break: 5 * 60 };
+        // --- Timers (seconds) ---
+        const WORK_TIME        = 25 * 60;
+        const BREAK_TIME       = 5 * 60;
+        const OVERDUE_REMINDER = 1 * 60;
+        // ------------------------
+
+        const PRESETS = { work: WORK_TIME, break: BREAK_TIME, overdueReminder: OVERDUE_REMINDER };
 
         let isRunning = false;
         let interval;
@@ -196,6 +218,15 @@
         const finishSound = new Audio('https://www.orangefreesounds.com/wp-content/uploads/2016/11/Email-notification-sound.mp3');
         finishSound.volume = 0.5;
         finishSound.preload = 'auto';
+
+        const overdueReminderSound = new Audio('https://orangefreesounds.com/wp-content/uploads/2026/03/Glitter-ding-sound-effect.mp3');
+        overdueReminderSound.volume = 0.5;
+        overdueReminderSound.preload = 'auto';
+
+        function playOverdueReminderSound() {
+            overdueReminderSound.currentTime = 0;
+            overdueReminderSound.play().catch(() => {});
+        }
 
         function playStartSound() {
             startSound.currentTime = 0;
@@ -215,6 +246,33 @@
         const timer = document.getElementById('timer');
         const startBtn = document.getElementById('startBtn');
         const tabs = document.querySelectorAll('.tab');
+        const overdueEl = document.getElementById('overdue');
+        const overdueTimeEl = document.getElementById('overdueTime');
+
+        let overdueStart = null;
+        let overdueInterval = null;
+
+        function showOverdue() {
+            overdueStart = Date.now();
+            let reminderFired = false;
+            overdueTimeEl.textContent = '00:00';
+            overdueEl.style.display = 'block';
+            overdueInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - overdueStart) / 1000);
+                overdueTimeEl.textContent = formatTime(elapsed);
+                if (!reminderFired && elapsed >= PRESETS.overdueReminder) {
+                    reminderFired = true;
+                    playOverdueReminderSound();
+                }
+            }, 100);
+        }
+
+        function hideOverdue() {
+            clearInterval(overdueInterval);
+            overdueInterval = null;
+            overdueStart = null;
+            overdueEl.style.display = 'none';
+        }
 
         function formatTime(seconds) {
             const mins = Math.floor(seconds / 60);
@@ -234,6 +292,7 @@
         }
 
         function startTimer() {
+            hideOverdue();
             if (!isRunning) {
                 isRunning = true;
                 startBtn.textContent = 'PAUSE';
@@ -258,6 +317,9 @@
 
                         // Play notification
                         playFinishSound();
+
+                        // Show overdue counter
+                        showOverdue();
                     }
                 }, 100);
             } else {
@@ -271,6 +333,7 @@
         }
 
         function switchTab(preset) {
+            hideOverdue();
             if (isRunning) {
                 clearInterval(interval);
                 isRunning = false;
