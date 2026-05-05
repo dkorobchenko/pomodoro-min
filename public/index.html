@@ -222,6 +222,7 @@
         const overdueReminderSound = new Audio('https://orangefreesounds.com/wp-content/uploads/2026/03/Glitter-ding-sound-effect.mp3');
         overdueReminderSound.volume = 0.5;
         overdueReminderSound.preload = 'auto';
+        overdueReminderSound.load();
 
         function playOverdueReminderSound() {
             overdueReminderSound.currentTime = 0;
@@ -251,25 +252,24 @@
 
         let overdueStart = null;
         let overdueInterval = null;
+        let overdueReminderTimeout = null;
 
         function showOverdue() {
             overdueStart = Date.now();
-            let reminderFired = false;
             overdueTimeEl.textContent = '00:00';
             overdueEl.style.display = 'block';
+            overdueReminderTimeout = setTimeout(playOverdueReminderSound, PRESETS.overdueReminder * 1000);
             overdueInterval = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - overdueStart) / 1000);
                 overdueTimeEl.textContent = formatTime(elapsed);
-                if (!reminderFired && elapsed >= PRESETS.overdueReminder) {
-                    reminderFired = true;
-                    playOverdueReminderSound();
-                }
             }, 100);
         }
 
         function hideOverdue() {
             clearInterval(overdueInterval);
+            clearTimeout(overdueReminderTimeout);
             overdueInterval = null;
+            overdueReminderTimeout = null;
             overdueStart = null;
             overdueEl.style.display = 'none';
         }
